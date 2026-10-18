@@ -1,0 +1,6 @@
+CARNET VENTE : vente sur place en une seule fenêtre
+1) Mettre à jour Code.gs dans Apps Script (coller, Enregistrer, Déployer > Gérer les déploiements > Nouvelle version).
+2) Héberger le dossier (comme les autres apps) et l'ouvrir sur le téléphone de l'agent, puis "Ajouter à l'écran d'accueil".
+3) Première ouverture : écrire son prénom, coller le code de connexion (code machiniste ou agent).
+4) Chaque vente : produit, client, métrage (ou total), prix modifiable, paiement, Valider.
+   La commande est créée et payée, le bon est créé. Sans internet, la vente part plus tard toute seule.
