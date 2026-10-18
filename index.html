@@ -284,15 +284,34 @@ function stmtPanel(st,blob,fname,p){
   document.body.appendChild(d);
   d.addEventListener('click',function(e){if(e.target===d||e.target.id==='waX')d.remove()});
 }
+
+function stmtMsg(m){try{if(typeof toast==='function')toast(m);else if(typeof pop==='function')pop(m)}catch(e){}}
+/* avec un numéro : on copie l'image puis on ouvre directement la discussion du client (il suffit de coller) */
+function stmtDirect(st,p,blobFn,fb){
+  var pr=new Promise(function(res){blobFn(st,res)});
+  var link='https://api.whatsapp.com/send?phone='+p+'&text='+encodeURIComponent('Bonjour '+st.name+', voici votre relevé de compte :');
+  var ok=false;
+  try{
+    if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){
+      ok=true;
+      navigator.clipboard.write([new ClipboardItem({'image/png':pr.then(function(b){if(!b)throw new Error('img');return b})})]).then(function(){
+        stmtMsg('Image copiée : dans la discussion, appui long puis « Coller ».');
+        setTimeout(function(){location.href=link},900);
+      },function(){pr.then(fb)});
+    }
+  }catch(e){ok=false}
+  if(!ok)pr.then(fb);
+}
 function stmtSend(st,phone){
   var p=waPhone(phone);
-  stmtBlob(st,function(blob){
+  var fb=function(blob){
     if(!blob){return}
     var f=new File([blob],'releve-'+st.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.png',{type:'image/png'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})&&navigator.share){
+    if(!p&&navigator.canShare&&navigator.canShare({files:[f]})&&navigator.share){
       navigator.share({files:[f]}).catch(function(e){if(e&&e.name!=='AbortError')stmtPanel(st,blob,f.name,p)});
     }else stmtPanel(st,blob,f.name,p);
-  });
+  };
+  if(p)stmtDirect(st,p,stmtBlob,fb);else stmtBlob(st,fb);
 }
 var MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 function dl(s){var p=String(s).split('-').map(Number);return p[2]+' '+MONTHS[p[1]-1]}
