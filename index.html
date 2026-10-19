@@ -276,40 +276,40 @@ function stmtBlob(st,cb){
   if(!st.rows.length){c.textAlign='left';c.fillText('Aucun mouvement.',pad,y)}
   cv.toBlob(cb,'image/png');
 }
-function stmtPanel(st,blob,fname,p){
+function stmtPanel(st,blob,fname,p,copied){
   var old=document.getElementById('waPanel');if(old)old.remove();
-  var url=URL.createObjectURL(blob),wa='https://api.whatsapp.com/send?'+(p?'phone='+p+'&':'')+'text='+encodeURIComponent('Bonjour '+st.name+', voici votre relevé de compte.');
+  var url=URL.createObjectURL(blob),wa='https://api.whatsapp.com/send?'+(p?'phone='+p+'&':'')+'text='+encodeURIComponent('Bonjour '+st.name+', voici votre relevé de compte :');
+  var f=null,canShare=false;try{f=new File([blob],fname,{type:'image/png'});canShare=!!(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]}))}catch(e){}
   var d=document.createElement('div');d.id='waPanel';d.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding:12px';
-  d.innerHTML='<div style="background:var(--surface,#fff);color:var(--ink,#111);border-radius:16px;padding:16px;max-width:520px;width:100%;max-height:92vh;overflow:auto;display:flex;flex-direction:column;gap:10px"><b>Relevé de '+esc(st.name)+'</b><img src="'+url+'" alt="Relevé" style="width:100%;border:1px solid var(--line,#ccc);border-radius:8px"><p style="margin:0;font-size:.88rem;opacity:.8">Appuie longuement sur l’image pour l’enregistrer ou la copier, puis ouvre WhatsApp et colle-la.</p><a href="'+url+'" download="'+esc(fname)+'" style="text-align:center;text-decoration:none;padding:14px;border-radius:12px;background:#1d3fa3;color:#fff;font-weight:700">Enregistrer l’image</a><a id="waGo" href="'+wa+'" target="_top" rel="noopener" style="text-align:center;text-decoration:none;padding:14px;border-radius:12px;background:#1b7a4c;color:#fff;font-weight:700">Ouvrir WhatsApp'+(p?'':' (choisir le contact)')+'</a><button type="button" id="waX" style="min-height:46px;border:1.5px solid var(--line,#ccc);border-radius:12px;background:none;color:inherit;font-weight:600">Fermer</button></div>';
+  var btn='text-align:center;text-decoration:none;padding:14px;border-radius:12px;color:#fff;font-weight:700;border:0;font-size:1rem;cursor:pointer';
+  d.innerHTML='<div style="background:var(--surface,#fff);color:var(--ink,#111);border-radius:16px;padding:16px;max-width:520px;width:100%;max-height:92vh;overflow:auto;display:flex;flex-direction:column;gap:10px"><b>Relevé de '+esc(st.name)+(copied?' · image copiée ✓':'')+'</b><img src="'+url+'" alt="Relevé" style="width:100%;border:1px solid var(--line,#ccc);border-radius:8px;max-height:38vh;object-fit:contain"><p style="margin:0;font-size:.9rem">'+(copied?'<b>1.</b> Ouvre la discussion. <b>2.</b> Appuie longuement dans la zone de message, puis « Coller ». <b>3.</b> Envoie.':'Appuie longuement sur l’image pour la copier ou l’enregistrer, puis ouvre WhatsApp et colle-la.')+'</p><a id="waGo" href="'+wa+'" target="_top" rel="noopener" style="'+btn+';background:#1b7a4c">Ouvrir la discussion'+(p?' du client':' WhatsApp (choisir le contact)')+'</a>'+(canShare?'<button type="button" id="waSh" style="'+btn+';background:#1d3fa3">Partager l’image (choisir le contact)</button>':'')+'<a href="'+url+'" download="'+esc(fname)+'" style="'+btn+';background:#555">Enregistrer l’image</a><button type="button" id="waX" style="min-height:46px;border:1.5px solid var(--line,#ccc);border-radius:12px;background:none;color:inherit;font-weight:600">Fermer</button></div>';
   document.body.appendChild(d);
-  d.addEventListener('click',function(e){if(e.target===d||e.target.id==='waX')d.remove()});
+  d.addEventListener('click',function(e){
+    if(e.target===d||e.target.id==='waX')d.remove();
+    else if(e.target.id==='waSh'&&f)navigator.share({files:[f]}).catch(function(){});
+  });
 }
-
 function stmtMsg(m){try{if(typeof toast==='function')toast(m);else if(typeof pop==='function')pop(m)}catch(e){}}
 /* avec un numéro : on copie l'image puis on ouvre directement la discussion du client (il suffit de coller) */
 function stmtDirect(st,p,blobFn,fb){
   var pr=new Promise(function(res){blobFn(st,res)});
-  var link='https://api.whatsapp.com/send?phone='+p+'&text='+encodeURIComponent('Bonjour '+st.name+', voici votre relevé de compte :');
   var ok=false;
   try{
     if(navigator.clipboard&&navigator.clipboard.write&&window.ClipboardItem){
       ok=true;
-      navigator.clipboard.write([new ClipboardItem({'image/png':pr.then(function(b){if(!b)throw new Error('img');return b})})]).then(function(){
-        stmtMsg('Image copiée : dans la discussion, appui long puis « Coller ».');
-        setTimeout(function(){location.href=link},900);
-      },function(){pr.then(fb)});
+      navigator.clipboard.write([new ClipboardItem({'image/png':pr.then(function(b){if(!b)throw new Error('img');return b})})]).then(function(){pr.then(function(b){fb(b,true)})},function(){pr.then(function(b){fb(b,false)})});
     }
   }catch(e){ok=false}
-  if(!ok)pr.then(fb);
+  if(!ok)pr.then(function(b){fb(b,false)});
 }
 function stmtSend(st,phone){
-  var p=waPhone(phone);
-  var fb=function(blob){
+  var p='';/* comme sans numéro : partage de l'image, on choisit le contact */
+  var fb=function(blob,copied){
     if(!blob){return}
     var f=new File([blob],'releve-'+st.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.png',{type:'image/png'});
     if(!p&&navigator.canShare&&navigator.canShare({files:[f]})&&navigator.share){
       navigator.share({files:[f]}).catch(function(e){if(e&&e.name!=='AbortError')stmtPanel(st,blob,f.name,p)});
-    }else stmtPanel(st,blob,f.name,p);
+    }else stmtPanel(st,blob,f.name,p,copied);
   };
   if(p)stmtDirect(st,p,stmtBlob,fb);else stmtBlob(st,fb);
 }
