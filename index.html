@@ -66,7 +66,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
   </div>
 
   <div class="card" id="saleCard" hidden>
-    <div class="modes" id="kind"><button type="button" data-k="sale" class="on">Vente</button><button type="button" data-k="reg">Règlement</button></div>
+    <div class="modes" id="kind"><button type="button" data-k="sale" class="on">Vente</button><button type="button" data-k="reg">Règlement</button><button type="button" data-k="val">Virements<b class="vb" hidden></b></button></div>
     <p class="notice" id="offline" hidden>Pas de connexion : la vente reste sur ce téléphone et partira toute seule.</p>
     <div class="field"><span>Produit</span><div class="seg2" id="prodBtns"></div><input type="hidden" id="prod"></div>
     <label class="field"><span>Client</span><input id="cli" autocomplete="off" placeholder="Choisir ou écrire un nom"><div class="res" id="cliRes" hidden></div></label>
@@ -90,7 +90,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
   </div>
 
   <div class="card" id="regCard" hidden>
-    <div class="modes" id="kind2"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg" class="on">Règlement</button></div>
+    <div class="modes" id="kind2"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg" class="on">Règlement</button><button type="button" data-k="val">Virements<b class="vb" hidden></b></button></div>
     <label class="field"><span>Client</span><input id="rcli" autocomplete="off" placeholder="Choisir le client"><div class="res" id="rcliRes" hidden></div></label>
     <p class="adv" id="rdue" hidden style="background:var(--warn-bg);color:var(--warn)"></p>
     <label class="field"><span>Montant reçu</span><input id="ramt" inputmode="decimal" class="mono" autocomplete="off"></label>
@@ -104,6 +104,13 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
     <p class="err" id="rerr" hidden></p>
     <button class="go" id="rgo" type="button">Valider le règlement</button>
     <button type="button" id="rwa" class="pchip" style="min-height:50px;width:100%">Envoyer le relevé du client (image) sur WhatsApp</button>
+  </div>
+
+  <div class="card" id="valCard" hidden>
+    <div class="modes" id="kind3"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg">Règlement</button><button type="button" data-k="val" class="on">Virements<b class="vb" hidden></b></button></div>
+    <p class="notice">Virements notés par les agents : vérifie que l’argent est arrivé sur le compte, puis valide. Tant que ce n’est pas validé, ce n’est pas compté dans la caisse.</p>
+    <div id="valList" class="hist"></div>
+    <p class="err" id="valErr" hidden></p>
   </div>
 
   <div class="hist" id="hist"></div>
@@ -190,7 +197,7 @@ function render(){
   var hasName=!!data.name,on=connected();
   $('nameCard').hidden=hasName;$('whoName').textContent=data.name;
   $('connCard').hidden=!hasName||on;
-  $('saleCard').hidden=!(hasName&&on&&kind==='sale');$('regCard').hidden=!(hasName&&on&&kind==='reg');
+  $('saleCard').hidden=!(hasName&&on&&kind==='sale');$('regCard').hidden=!(hasName&&on&&kind==='reg');$('valCard').hidden=!(hasName&&on&&kind==='val');renderVal();
   if(fillProd()&&!$('price').value)onProd();refresh();renderHist();
 }
 function renderHist(){
@@ -217,7 +224,22 @@ function submit(){
   if(!clients().some(function(c){return c[0]===s.client})&&data.view)data.view.clients.push([s.client,n]);
   save();reset();renderHist();pop('Vente enregistrée ✓');sync();
 }
-function setKind(k){kind=k;render()}
+function setKind(k){kind=k;render();if(k==='val')vLoad()}
+var vArm=null,vT=0;
+function vList(){return data.pend||[]}
+function renderVal(){
+  var l=vList(),n=l.length;
+  Array.prototype.forEach.call(document.querySelectorAll('.vb'),function(b){b.hidden=!n;b.textContent=n?' '+n:''});
+  if(kind!=='val')return;
+  $('valList').innerHTML=l.length?l.map(function(o){var t=o.s?new Date(o.s):null,isR=o.t==='reglement';
+    return '<div class="it" style="flex-direction:column"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>'+esc(o.n||o.l||(isR?'Règlement':'Vente'))+'</b><small>'+(isR?'Règlement':'Vente')+(o.p?' · '+esc(o.p):'')+' · '+esc(o.d)+(t?' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'):'')+(o.a?' · '+esc(o.a):'')+'</small></div><b class="mono">'+fmt(o.c)+' DH</b></div>'
+      +'<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="go" data-vok="'+esc(o.id)+'" style="min-height:44px;font-size:.95rem;flex:1">Valider ✓</button><button type="button" class="pchip" data-vno="'+esc(o.id)+'" style="min-height:44px;flex:1">'+(vArm===o.id?'Confirmer : non reçu ?':'Non reçu')+'</button></div></div>'}).join(''):'<p class="notice">Aucun virement en attente.</p>';
+}
+function vLoad(){if(!connected())return;api('quickPend').then(function(r){data.pend=r.pending||[];renderVal()},function(){})}
+function vAct(id,ok){
+  var er=$('valErr');er.hidden=true;
+  api('quickVal',{id:id,ok:ok,by:data.name}).then(function(r){data.pend=r.pending||[];renderVal();pop(ok?'Virement validé ✓':'Marqué non reçu : bon annulé')},function(e){er.textContent=e.code==='network'?'Pas de connexion. Réessaie.':(e.message||'Erreur');er.hidden=false});
+}
 function rDue(){var n=cleanName($('rcli').value);if(!n)return 0;var f=clients().find(function(c){return nameKey(c[1])===nameKey(n)});return f?((data.view&&data.view.due&&data.view.due[f[0]])||0):0}
 function rRefresh(){
   var d=rDue(),a=parseMoney($('ramt').value)||0,n=cleanName($('rcli').value),t='';
@@ -351,6 +373,9 @@ function init(){
   $('go').onclick=submit;
   $('kind').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('kind2').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
+  $('kind3').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
+  $('valList').addEventListener('click',function(e){var b=e.target.closest('[data-vok]');if(b){vAct(b.dataset.vok,true);return}b=e.target.closest('[data-vno]');if(b){var id=b.dataset.vno;if(vArm!==id){vArm=id;clearTimeout(vT);vT=setTimeout(function(){vArm=null;renderVal()},4000);renderVal();return}vArm=null;vAct(id,false)}});
+  setInterval(function(){if(!document.hidden&&connected())vLoad()},30000);
   $('rmodes').addEventListener('click',function(e){var b=e.target.closest('button[data-m]');if(!b)return;rmode=b.dataset.m;Array.prototype.forEach.call($('rmodes').children,function(x){x.classList.toggle('on',x===b)})});
   $('rcli').addEventListener('focus',rShowRes);$('rcli').addEventListener('input',function(){rShowRes();rRefresh()});
   $('ramt').addEventListener('input',rRefresh);
@@ -359,7 +384,7 @@ function init(){
   $('rgo').onclick=rSubmit;
   var h=/[#&]c=/.test(location.hash)?parseConn(location.hash):null;if(h&&!connected())connectWith(location.hash,function(){});
   render();
-  if(connected()){sync();api('quickView').then(function(v){data.view=v;save();render()},function(){})}
+  if(connected()){sync();vLoad();api('quickView').then(function(v){data.view=v;save();render()},function(){})}
   window.addEventListener('online',sync);
   if('serviceWorker' in navigator&&/^https?:/.test(location.protocol))navigator.serviceWorker.register('sw.js').catch(function(){});
 }
