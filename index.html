@@ -87,6 +87,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
     <div class="sum"><span>À encaisser</span><b class="mono" id="sumV">0,00 DH</b></div>
     <p class="err" id="err" hidden></p>
     <button class="go" id="go" type="button">Valider la vente</button>
+    <button class="pchip" id="goOpen" type="button" style="min-height:50px;margin-top:10px;width:100%;font-weight:700">Saisir sans encaisser (l’agent encaissera)</button>
   </div>
 
   <div class="card" id="regCard" hidden>
@@ -175,7 +176,7 @@ function showRes(){
   box.innerHTML=m.map(function(c){return '<button type="button" data-c="'+esc(c[1])+'">'+esc(c[1])+'</button>'}).join('');box.hidden=false;
 }
 function fillProd(){
-  var ps=prods(),cur=$('prod').value;
+  var ps=prods(),cur=$('prod').value||data.lastProd||'';
   if(!ps.some(function(p){return p.name===cur}))cur=ps.length?ps[0].name:'';
   var changed=cur!==$('prod').value;$('prod').value=cur;
   $('prodBtns').innerHTML=ps.map(function(p){return '<button type="button" class="pchip" data-p="'+esc(p.name)+'" aria-pressed="'+(p.name===cur?'true':'false')+'">'+esc(p.name)+'</button>'}).join('');
@@ -204,9 +205,9 @@ function renderHist(){
   var items=data.q.map(function(s){return {s:s,p:1}}).concat(data.done.slice().reverse().map(function(s){return {s:s,p:0}}));
   $('hist').innerHTML=items.slice(0,15).map(function(x){var s=x.s;
     if(s.kind==='reg')return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>Règlement · '+esc(s.mode)+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>';
-    return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>'+esc(s.product)+' · '+String(s.qty).replace('.',',')+' · '+esc(s.mode)+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>'}).join('');
+    return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>'+esc(s.product)+' · '+String(s.qty).replace('.',',')+' · '+(s.unpaid?'à encaisser':esc(s.mode))+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>'}).join('');
 }
-function reset(){['qty','price','tot','note'].forEach(function(i){$(i).value=''});$('cli').value='';$('prod').value='';fillProd();$('useAdv').checked=false;rec=[];setMode('especes');err('');onProd()}
+function reset(){['qty','price','tot','note'].forEach(function(i){$(i).value=''});$('cli').value='';fillProd();$('useAdv').checked=false;rec=[];setMode('especes');err('');onProd()}
 function setMode(m){mode=m;Array.prototype.forEach.call($('modes').children,function(b){b.classList.toggle('on',b.dataset.m===m)})}
 function validate(){
   if(!$('prod').value)return 'Choisis le produit.';
@@ -214,15 +215,16 @@ function validate(){
   var t=total();if(!t)return 'Saisis le métrage et le prix.';
   return '';
 }
-function submit(){
+function submit(unpaid){
+  unpaid=unpaid===true;
   var m=validate();if(m){err(m);return}
   err('');
   var q=val('qty'),t=total(),n=cleanName($('cli').value);
-  var s={id:newId(),product:$('prod').value,qty:q,price:val('price'),total:t,clientName:n,client:cidOf(n),mode:mode,useAdv:useAmt()>0,note:$('note').value.trim(),by:data.name};
+  var s={id:newId(),product:$('prod').value,qty:q,price:val('price'),total:t,clientName:n,client:cidOf(n),mode:unpaid?'':mode,useAdv:unpaid?false:useAmt()>0,unpaid:unpaid,note:$('note').value.trim(),by:data.name};
   data.q.push(s);save();
   if(data.view&&data.view.adv&&s.useAdv){var k=s.client;data.view.adv[k]=Math.max(0,(data.view.adv[k]||0)-Math.min(t,data.view.adv[k]||0));if(!data.view.adv[k])delete data.view.adv[k]}
   if(!clients().some(function(c){return c[0]===s.client})&&data.view)data.view.clients.push([s.client,n]);
-  save();reset();renderHist();pop('Vente enregistrée ✓');sync();
+  save();reset();renderHist();pop(unpaid?'Commande saisie ✓ : l’agent l’encaissera':'Vente enregistrée ✓');sync();
 }
 function setKind(k){kind=k;render();if(k==='val')vLoad()}
 var vArm=null,vT=0;
@@ -270,7 +272,7 @@ function sync(){
   (function next(){
     var s=data.q[0];
     if(!s){return api('quickView').then(function(v){data.view=v;save();fillProd();refresh()}).catch(function(){}).then(function(){syncing=false;$('offline').hidden=true;renderHist()})}
-    (s.kind==='reg'?api('quickReg',{id:s.id,client:s.client,clientName:s.clientName,cents:s.total,mode:s.mode,note:s.note,by:s.by}):api('quickSale',{id:s.id,product:s.product,qty:s.qty,price:s.price,total:s.total,client:s.client,clientName:s.clientName,mode:s.mode,useAdv:s.useAdv,note:s.note,by:s.by})).then(function(){
+    (s.kind==='reg'?api('quickReg',{id:s.id,client:s.client,clientName:s.clientName,cents:s.total,mode:s.mode,note:s.note,by:s.by}):api('quickSale',{id:s.id,product:s.product,qty:s.qty,price:s.price,total:s.total,client:s.client,clientName:s.clientName,mode:s.mode,useAdv:s.useAdv,unpaid:s.unpaid===true,note:s.note,by:s.by})).then(function(){
       data.q.shift();data.done.push(s);data.done=data.done.slice(-30);save();renderHist();next()
     },function(e){
       syncing=false;
@@ -364,13 +366,13 @@ function init(){
   $('chg').onclick=function(){var n=prompt('Ton prénom',data.name);if(n==null)return;n=cleanName(n);if(n.length>=2){data.name=n;save();render()}};
   $('connOk').onclick=function(){$('connErr').hidden=true;connectWith($('connIn').value,function(m){$('connErr').hidden=!m;$('connErr').textContent=m})};
   ['qty','price','tot'].forEach(function(k){$(k).addEventListener('input',function(){typed(k)})});
-  $('prodBtns').addEventListener('click',function(e){var b=e.target.closest('button[data-p]');if(!b)return;$('prod').value=b.dataset.p;fillProd();onProd()});
+  $('prodBtns').addEventListener('click',function(e){var b=e.target.closest('button[data-p]');if(!b)return;$('prod').value=b.dataset.p;data.lastProd=b.dataset.p;save();fillProd();onProd()});
   $('cli').addEventListener('focus',showRes);$('cli').addEventListener('input',function(){showRes();tryLast();refresh()});
   $('cliRes').addEventListener('click',function(e){var b=e.target.closest('button[data-c]');if(!b)return;$('cli').value=b.dataset.c;$('cliRes').hidden=true;tryLast();refresh()});
   document.addEventListener('click',function(e){if(!e.target.closest('#cli')&&!e.target.closest('#cliRes'))$('cliRes').hidden=true;if(!e.target.closest('#rcli')&&!e.target.closest('#rcliRes'))$('rcliRes').hidden=true});
   $('modes').addEventListener('click',function(e){var b=e.target.closest('button[data-m]');if(b)setMode(b.dataset.m)});
   $('useAdv').addEventListener('change',refresh);
-  $('go').onclick=submit;
+  $('go').onclick=function(){submit(false)};$('goOpen').onclick=function(){submit(true)};
   $('kind').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('kind2').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('kind3').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
