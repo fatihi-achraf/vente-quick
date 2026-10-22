@@ -78,7 +78,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
     <label class="field"><span>Note (facultatif)</span><input id="note" maxlength="120" autocomplete="off"></label>
     <div><div class="lg" style="margin-bottom:6px">Paiement</div>
       <div class="modes" id="modes">
-        <button type="button" data-m="especes" class="on">Espèces</button>
+        <button type="button" data-m="especes">Espèces</button>
         <button type="button" data-m="virement">Virement</button>
         <button type="button" data-m="cheque">Chèque</button>
         <button type="button" data-m="credit" class="cr">Crédit</button>
@@ -121,7 +121,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
 (function(){
 'use strict';
 var KEY='carnet-quick-v1',$=function(i){return document.getElementById(i)};
-var data={name:'',conn:null,view:null,q:[],done:[]},mode='especes',rmode='especes',kind='sale',popT=0,syncing=false;
+var data={name:'',conn:null,view:null,q:[],done:[]},mode='',rmode='especes',kind='sale',popT=0,syncing=false;
 function load(){try{var d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&typeof d==='object')data=Object.assign(data,d)}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
 var nf=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -207,17 +207,18 @@ function renderHist(){
     if(s.kind==='reg')return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>Règlement · '+esc(s.mode)+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>';
     return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>'+esc(s.product)+' · '+String(s.qty).replace('.',',')+' · '+(s.unpaid?'à encaisser':esc(s.mode))+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>'}).join('');
 }
-function reset(){['qty','price','tot','note'].forEach(function(i){$(i).value=''});$('cli').value='';fillProd();$('useAdv').checked=false;rec=[];setMode('especes');err('');onProd()}
+function reset(){['qty','price','tot','note'].forEach(function(i){$(i).value=''});$('cli').value='';fillProd();$('useAdv').checked=false;rec=[];setMode('');err('');onProd()}
 function setMode(m){mode=m;Array.prototype.forEach.call($('modes').children,function(b){b.classList.toggle('on',b.dataset.m===m)})}
-function validate(){
+function validate(unpaid){
   if(!$('prod').value)return 'Choisis le produit.';
   var n=cleanName($('cli').value);if(n.length<2)return 'Choisis ou écris le client.';
   var t=total();if(!t)return 'Saisis le métrage et le prix.';
+  if(!unpaid&&!mode)return 'Choisis le mode de paiement.';
   return '';
 }
 function submit(unpaid){
   unpaid=unpaid===true;
-  var m=validate();if(m){err(m);return}
+  var m=validate(unpaid);if(m){err(m);return}
   err('');
   var q=val('qty'),t=total(),n=cleanName($('cli').value);
   var s={id:newId(),product:$('prod').value,qty:q,price:val('price'),total:t,clientName:n,client:cidOf(n),mode:unpaid?'':mode,useAdv:unpaid?false:useAmt()>0,unpaid:unpaid,note:$('note').value.trim(),by:data.name};
