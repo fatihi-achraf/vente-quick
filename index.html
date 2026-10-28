@@ -45,6 +45,9 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
 .hist .it{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:.9rem}
 .hist .it small{color:var(--ink-2);display:block}
 .pend{color:var(--warn);font-weight:600;font-size:.75rem}
+.cl-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cl-sum div{padding:10px 12px;border-radius:10px;background:var(--surface-2)}.cl-sum span{display:block;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}.cl-sum b{font-size:1.15rem}.cl-sum .d b{color:var(--bad)}.cl-sum .a b{color:var(--ok)}
+.crow{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;min-height:54px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:.98rem}.crow b.d{color:var(--bad)}.crow b.a{color:var(--ok)}.crow small{display:block;color:var(--ink-2)}
+.cl-big{display:flex;justify-content:space-between;align-items:baseline;padding:14px;border-radius:12px;font-weight:700}.cl-big.d{background:var(--bad-bg);color:var(--bad)}.cl-big.a{background:var(--ok-bg);color:var(--ok)}.cl-big.z{background:var(--surface-2);color:var(--ink-2)}.cl-big b{font-size:1.5rem}
 .pop{position:fixed;left:16px;right:16px;bottom:24px;max-width:520px;margin:auto;padding:14px 16px;border-radius:12px;background:var(--ok);color:#fff;font-weight:700;text-align:center;z-index:9}
 .pop.warn{background:var(--warn);color:#fff}
 </style>
@@ -66,7 +69,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
   </div>
 
   <div class="card" id="saleCard" hidden>
-    <div class="modes" id="kind"><button type="button" data-k="sale" class="on">Vente</button><button type="button" data-k="reg">Règlement</button><button type="button" data-k="val">Virements<b class="vb" hidden></b></button></div>
+    <div class="modes" id="kind"><button type="button" data-k="sale" class="on">Vente</button><button type="button" data-k="reg">Règlement</button><button type="button" data-k="val">Virements<b class="vb" hidden></b></button><button type="button" data-k="cli">Clients</button></div>
     <p class="notice" id="offline" hidden>Pas de connexion : la vente reste sur ce téléphone et partira toute seule.</p>
     <div class="field"><span>Produit</span><div class="seg2" id="prodBtns"></div><input type="hidden" id="prod"></div>
     <label class="field"><span>Client</span><input id="cli" autocomplete="off" placeholder="Choisir ou écrire un nom"><div class="res" id="cliRes" hidden></div></label>
@@ -91,7 +94,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
   </div>
 
   <div class="card" id="regCard" hidden>
-    <div class="modes" id="kind2"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg" class="on">Règlement</button><button type="button" data-k="val">Virements<b class="vb" hidden></b></button></div>
+    <div class="modes" id="kind2"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg" class="on">Règlement</button><button type="button" data-k="val">Virements<b class="vb" hidden></b></button><button type="button" data-k="cli">Clients</button></div>
     <label class="field"><span>Client</span><input id="rcli" autocomplete="off" placeholder="Choisir le client"><div class="res" id="rcliRes" hidden></div></label>
     <p class="adv" id="rdue" hidden style="background:var(--warn-bg);color:var(--warn)"></p>
     <label class="field"><span>Montant reçu</span><input id="ramt" inputmode="decimal" class="mono" autocomplete="off"></label>
@@ -108,10 +111,21 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
   </div>
 
   <div class="card" id="valCard" hidden>
-    <div class="modes" id="kind3"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg">Règlement</button><button type="button" data-k="val" class="on">Virements<b class="vb" hidden></b></button></div>
+    <div class="modes" id="kind3"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg">Règlement</button><button type="button" data-k="val" class="on">Virements<b class="vb" hidden></b></button><button type="button" data-k="cli">Clients</button></div>
     <p class="notice">Virements notés par les agents : vérifie que l’argent est arrivé sur le compte, puis valide. Tant que ce n’est pas validé, ce n’est pas compté dans la caisse.</p>
     <div id="valList" class="hist"></div>
     <p class="err" id="valErr" hidden></p>
+  </div>
+
+  <div class="card" id="cliCard" hidden>
+    <div class="modes" id="kind4"><button type="button" data-k="sale">Vente</button><button type="button" data-k="reg">Règlement</button><button type="button" data-k="val">Virements<b class="vb" hidden></b></button><button type="button" data-k="cli" class="on">Clients</button></div>
+    <div id="cliTop" class="cl-sum"></div>
+    <div id="cliListBox">
+      <input id="cliQ" type="search" autocomplete="off" placeholder="Chercher un client" aria-label="Chercher un client" style="width:100%;min-height:50px;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface-2);font-size:1.05rem;color:var(--ink)">
+      <div class="modes" id="cliModes" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:10px"><button type="button" data-cm="due" class="on">Crédits</button><button type="button" data-cm="adv">Avances</button><button type="button" data-cm="all">Tous</button></div>
+      <div id="cliRows" class="hist" style="margin-top:10px"></div>
+    </div>
+    <div id="cliDet" hidden></div>
   </div>
 
   <div class="hist" id="hist"></div>
@@ -198,7 +212,7 @@ function render(){
   var hasName=!!data.name,on=connected();
   $('nameCard').hidden=hasName;$('whoName').textContent=data.name;
   $('connCard').hidden=!hasName||on;
-  $('saleCard').hidden=!(hasName&&on&&kind==='sale');$('regCard').hidden=!(hasName&&on&&kind==='reg');$('valCard').hidden=!(hasName&&on&&kind==='val');renderVal();
+  $('saleCard').hidden=!(hasName&&on&&kind==='sale');$('regCard').hidden=!(hasName&&on&&kind==='reg');$('valCard').hidden=!(hasName&&on&&kind==='val');$('cliCard').hidden=!(hasName&&on&&kind==='cli');renderVal();renderCli();
   if(fillProd()&&!$('price').value)onProd();refresh();renderHist();
 }
 function renderHist(){
@@ -227,7 +241,42 @@ function submit(unpaid){
   if(!clients().some(function(c){return c[0]===s.client})&&data.view)data.view.clients.push([s.client,n]);
   save();reset();renderHist();pop(unpaid?'Commande saisie ✓ : l’agent l’encaissera':'Vente enregistrée ✓');sync();
 }
-function setKind(k){kind=k;render();if(k==='val')vLoad()}
+function setKind(k){kind=k;if(k!=='cli')cliSel=null;render();if(k==='val')vLoad();if(k==='cli')cliLoad()}
+/* ---- onglet Clients : crédits et avances ---- */
+var cliSel=null,cliMode='due',cliDet=null;
+function cliBal(id){var v=data.view||{};return ((v.due||{})[id]||0)-((v.adv||{})[id]||0)}
+function cliLoad(){if(!connected())return;api('quickView').then(function(v){data.view=v;save();renderCli()},function(){})}
+function renderCli(){
+  if(kind!=='cli')return;
+  var v=data.view||{},due=v.due||{},adv=v.adv||{},td=0,ta=0,nd=0,na=0;
+  Object.keys(due).forEach(function(k){td+=due[k];nd++});Object.keys(adv).forEach(function(k){ta+=adv[k];na++});
+  $('cliTop').innerHTML='<div class="d"><span>À recevoir ('+nd+')</span><b>'+fmt(td)+' DH</b></div><div class="a"><span>Avances ('+na+')</span><b>'+fmt(ta)+' DH</b></div>';
+  $('cliListBox').hidden=!!cliSel;$('cliDet').hidden=!cliSel;
+  if(cliSel){renderCliDet();return}
+  var q=nameKey($('cliQ').value),l=clients().filter(function(c){
+    if(q&&nameKey(c[1]).indexOf(q)<0)return false;
+    var b=cliBal(c[0]);return cliMode==='all'||(cliMode==='due'?b>0:b<0)});
+  l.sort(function(a,b){return cliMode==='all'?a[1].localeCompare(b[1],'fr'):Math.abs(cliBal(b[0]))-Math.abs(cliBal(a[0]))});
+  Array.prototype.forEach.call($('cliModes').children,function(b){b.classList.toggle('on',b.dataset.cm===cliMode)});
+  $('cliRows').innerHTML=l.length?l.slice(0,200).map(function(c){var b=cliBal(c[0]);return '<button type="button" class="crow" data-cl="'+esc(c[0])+'"><span><b>'+esc(c[1])+'</b></span>'+(b>0?'<b class="d">'+fmt(b)+' DH</b>':(b<0?'<b class="a">Avance '+fmt(-b)+' DH</b>':'<span style="color:var(--ink-2)">à jour</span>'))+'</button>'}).join(''):'<p class="notice" style="background:var(--surface-2);color:var(--ink-2)">'+(q?'Aucun client trouvé.':(cliMode==='due'?'Aucun crédit en cours.':(cliMode==='adv'?'Aucune avance.':'Aucun client.')))+'</p>';
+}
+function renderCliDet(){
+  var c=clients().find(function(x){return x[0]===cliSel});if(!c){cliSel=null;renderCli();return}
+  var b=cliBal(c[0]),j=cliDet&&cliDet.id===c[0]?cliDet.j:null;
+  var h='<button type="button" class="link" id="cliBack" style="align-self:flex-start">← Tous les clients</button><h3 style="margin:6px 0;font-size:1.15rem">'+esc(c[1])+'</h3>'
+   +'<div class="cl-big '+(b>0?'d':(b<0?'a':'z'))+'"><span>'+(b>0?'Reste à payer':(b<0?'Avance':'À jour'))+'</span><b>'+fmt(Math.abs(b))+' DH</b></div>';
+  if(j)h+='<div class="sum" style="margin-top:8px"><span>Pris à crédit</span><b class="mono">'+fmt(j.pris)+' DH</b></div><div class="sum" style="margin-top:6px"><span>Déjà payé</span><b class="mono">'+fmt(j.paye)+' DH</b></div>';
+  h+='<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px"><button type="button" class="go" id="cliPay">Encaisser un règlement</button><button type="button" class="pchip" id="cliWa" style="min-height:50px;width:100%"'+(j?'':' disabled')+'>Envoyer le relevé (image) sur WhatsApp</button></div>';
+  h+='<div class="lg" style="margin-top:14px">Derniers mouvements</div><div class="hist" style="margin-top:6px">';
+  if(!j)h+='<p class="notice" style="background:var(--surface-2);color:var(--ink-2)">Chargement…</p>';
+  else if(!j.rows.length)h+='<p class="notice" style="background:var(--surface-2);color:var(--ink-2)">Aucun mouvement à crédit.</p>';
+  else h+=j.rows.map(function(o){var r=o.t==='r';return '<div class="it"><div><b>'+(r?'Règlement '+esc(MODEL[o.m]||o.m):'Crédit')+'</b><small>'+esc(dl(o.d))+(o.p?' · '+esc(o.p):'')+(o.l&&!r?' · '+esc(o.l):'')+'</small></div><b class="mono" style="color:var(--'+(r?'ok':'ink')+')">'+(r?'−':'+')+fmt(o.c)+'</b></div>'}).join('');
+  $('cliDet').innerHTML=h+'</div>';
+}
+function cliOpen(id){
+  cliSel=id;cliDet=null;renderCli();window.scrollTo(0,0);
+  api('quickStmt',{client:id}).then(function(j){if(cliSel===id){cliDet={id:id,j:j};renderCliDet()}},function(e){if(cliSel===id){$('cliDet').insertAdjacentHTML('beforeend','<p class="err">'+(e.code==='network'?'Pas de connexion.':'Détail indisponible pour l’instant.')+'</p>')}});
+}
 var vArm=null,vT=0;
 function vList(){return data.pend||[]}
 function renderVal(){
@@ -248,7 +297,7 @@ function rRefresh(){
   var d=rDue(),a=parseMoney($('ramt').value)||0,n=cleanName($('rcli').value),t='';
   if(d>0){t='Solde dû : '+fmt(d)+' DH';if(a>d)t+=' · Surplus '+fmt(a-d)+' DH enregistré comme avance'}
   else if(n.length>=2&&a>0)t='Pas de dette : '+fmt(a)+' DH seront enregistrés comme avance du client';
-  $('rdue').hidden=!t;$('rdue').textContent=t}
+  $('rdue').hidden=!t;$('rdue').textContent=t;stmtPrefetch()}
 function rShowRes(){
   var q=nameKey($('rcli').value),box=$('rcliRes'),due=(data.view&&data.view.due)||{};
   var m=clients().filter(function(c){return q?nameKey(c[1]).indexOf(q)>=0:due[c[0]]>0}).slice(0,40);
@@ -288,17 +337,16 @@ function sync(){
 /* ---- relevé client en image : partage WhatsApp ---- */
 function waPhone(ph){var d=String(ph||'').replace(/[^\d+]/g,'');if(d.indexOf('+')===0)d=d.slice(1);d=d.replace(/\D/g,'');if(d.indexOf('00')===0)d=d.slice(2);else if(d.length===10&&d.charAt(0)==='0')d='212'+d.slice(1);else if(d.length===9&&/^[5-7]/.test(d))d='212'+d;return d.length>=9?d:''}
 function stmtBlob(st,cb){
-  var W=720,pad=36,lh=40,H=pad*2+150+Math.max(1,st.rows.length)*lh+90,sc=2,cv=document.createElement('canvas');
+  var W=720,pad=36,lh=40,H=pad*2+82+Math.max(1,st.rows.length)*lh+90,sc=2,cv=document.createElement('canvas');
   cv.width=W*sc;cv.height=H*sc;var c=cv.getContext('2d');c.scale(sc,sc);
   c.fillStyle='#fff';c.fillRect(0,0,W,H);c.fillStyle='#1b7a4c';c.fillRect(0,0,W,86);
   c.fillStyle='#fff';c.font='700 28px system-ui,sans-serif';c.fillText('Relevé de compte',pad,40);c.font='500 18px system-ui,sans-serif';c.fillText(st.name+' · '+st.date,pad,68);
   var y=86+pad+10;c.fillStyle='#111';c.font='500 20px system-ui,sans-serif';
-  [['Crédits',fmt(st.pris)+' DH'],['Règlements',fmt(st.paye)+' DH']].forEach(function(p){c.textAlign='left';c.fillText(p[0],pad,y);c.textAlign='right';c.fillText(p[1],W-pad,y);y+=34});
   c.font='700 24px system-ui,sans-serif';c.fillStyle=st.rest>0?'#b93a22':'#1b7a4c';c.textAlign='left';c.fillText(st.rest<0?'Avance':'Reste à payer',pad,y+6);c.textAlign='right';c.fillText(fmt(st.rest)+' DH',W-pad,y+6);y+=34;
   c.strokeStyle='#d3daea';c.beginPath();c.moveTo(pad,y);c.lineTo(W-pad,y);c.stroke();y+=30;
   c.font='500 18px system-ui,sans-serif';c.fillStyle='#111';
   st.rows.forEach(function(r){c.textAlign='left';var t=r.t;while(c.measureText(r.d+'  '+t).width>W-pad*2-120&&t.length>4)t=t.slice(0,-2);c.fillText(r.d+'  '+t,pad,y);c.textAlign='right';c.fillStyle=r.a.charAt(0)==='−'?'#1b7a4c':'#111';c.fillText(r.a,W-pad,y);c.fillStyle='#111';y+=lh});
-  if(!st.rows.length){c.textAlign='left';c.fillText('Aucun mouvement.',pad,y)}
+  if(!st.rows.length){c.textAlign='left';c.fillText('Aucun mouvement ces 15 derniers jours.',pad,y)}
   cv.toBlob(cb,'image/png');
 }
 function stmtPanel(st,blob,fname,p,copied){
@@ -341,13 +389,38 @@ function stmtSend(st,phone){
 var MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 function dl(s){var p=String(s).split('-').map(Number);return p[2]+' '+MONTHS[p[1]-1]}
 var MODEL={especes:'espèces',virement:'virement',carte:'carte',cheque:'chèque'};
+var stmtCache={id:'',t:0,blob:null,st:null,busy:''};
+function stmtCut(t){var p=String(t||'').split('-').map(Number),d=p.length===3&&p[0]?new Date(Date.UTC(p[0],p[1]-1,p[2]-14)):new Date(Date.now()-14*864e5);return d.toISOString().slice(0,10)}
+function stmtBuild(j){return {name:j.name,date:dl(j.today),pris:j.pris,paye:j.paye,rest:j.pris-j.paye,rows:j.rows.filter(function(o){return o.d>=stmtCut(j.today)}).map(function(o){var r=o.t==='r';return {d:dl(o.d),t:(r?'Règlement '+(MODEL[o.m]||o.m):'Crédit')+(o.p?' · '+o.p:'')+(o.l&&!r?' · '+o.l:''),a:(r?'−':'+')+fmt(o.c)}})}}
+function stmtFname(st){return 'releve-'+st.name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.png'}
+/* le relevé est préparé dès que le client est choisi : au clic, le partage part tout de suite (le navigateur exige un geste direct) */
+function stmtPrefetch(){
+  var n=cleanName($('rcli').value),f=clients().find(function(c){return nameKey(c[1])===nameKey(n)});
+  if(!f||!data.conn)return;
+  if(stmtCache.id===f[0]&&Date.now()-stmtCache.t<60000&&stmtCache.blob)return;
+  if(stmtCache.busy===f[0])return;
+  stmtCache.busy=f[0];
+  api('quickStmt',{client:f[0]}).then(function(j){var st=stmtBuild(j);stmtBlob(st,function(b){if(stmtCache.busy===f[0])stmtCache.busy='';if(b)stmtCache={id:f[0],t:Date.now(),blob:b,st:st,busy:''}})},function(){if(stmtCache.busy===f[0])stmtCache.busy=''});
+}
 function sendStmt(){
   var n=cleanName($('rcli').value),f=clients().find(function(c){return nameKey(c[1])===nameKey(n)});
   if(!f){rErr('Choisis un client de la liste pour son relevé.');return}
   rErr('');
+  if(stmtCache.id===f[0]&&Date.now()-stmtCache.t<60000&&stmtCache.blob){
+    var st0=stmtCache.st,b0=stmtCache.blob,fl;
+    try{fl=new File([b0],stmtFname(st0),{type:'image/png'})}catch(e){fl=null}
+    stmtCache.t=0;
+    if(fl&&navigator.share&&navigator.canShare&&navigator.canShare({files:[fl]})){
+      navigator.share({files:[fl]}).catch(function(e){if(e&&e.name!=='AbortError')stmtPanel(st0,b0,fl.name,'')});
+    }else stmtPanel(st0,b0,stmtFname(st0),'');
+    return;
+  }
+  var btn=$('rwa');if(btn)btn.disabled=true;
   api('quickStmt',{client:f[0]}).then(function(j){
-    stmtSend({name:j.name,date:dl(j.today),pris:j.pris,paye:j.paye,rest:j.pris-j.paye,rows:j.rows.map(function(o){var r=o.t==='r';return {d:dl(o.d),t:(r?'Règlement '+(MODEL[o.m]||o.m):'Crédit')+(o.p?' · '+o.p:'')+(o.l&&!r?' · '+o.l:''),a:(r?'−':'+')+fmt(o.c)}})},j.phone);
-  },function(e){rErr(e.code==='network'?'Pas de connexion.':(e.code==='action'?'Le script Google n’est pas à jour : demande au responsable de le mettre à jour.':'Relevé impossible pour l’instant.'))});
+    if(btn)btn.disabled=false;
+    var st=stmtBuild(j);
+    stmtBlob(st,function(b){if(!b){rErr('Relevé impossible pour l’instant.');return}stmtPanel(st,b,stmtFname(st),'')});
+  },function(e){if(btn)btn.disabled=false;rErr(e.code==='network'?'Pas de connexion.':(e.code==='action'?'Le script Google n’est pas à jour : demande au responsable de le mettre à jour.':'Relevé impossible pour l’instant.'))});
 }
 function parseConn(text){
   var s=String(text||''),m=/CONN1:([A-Za-z0-9_-]+)/.exec(s)||/[#&]c=(?:CONN1:)?([A-Za-z0-9_-]+)/.exec(s);if(!m)return null;
@@ -377,6 +450,15 @@ function init(){
   $('kind').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('kind2').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('kind3').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
+  $('kind4').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
+  $('cliQ').addEventListener('input',renderCli);
+  $('cliModes').addEventListener('click',function(e){var b=e.target.closest('button[data-cm]');if(b){cliMode=b.dataset.cm;renderCli()}});
+  $('cliCard').addEventListener('click',function(e){
+    var r=e.target.closest('[data-cl]');if(r){cliOpen(r.dataset.cl);return}
+    if(e.target.closest('#cliBack')){cliSel=null;cliDet=null;renderCli();return}
+    if(e.target.closest('#cliPay')){var c=clients().find(function(x){return x[0]===cliSel});if(c){setKind('reg');$('rcli').value=c[1];rRefresh();$('ramt').focus()}return}
+    if(e.target.closest('#cliWa')){var j=cliDet&&cliDet.j;if(!j)return;var st=stmtBuild(j);stmtBlob(st,function(bl){if(bl)stmtPanel(st,bl,stmtFname(st),'')});return}
+  });
   $('valList').addEventListener('click',function(e){var b=e.target.closest('[data-vok]');if(b){vAct(b.dataset.vok,true);return}b=e.target.closest('[data-vno]');if(b){var id=b.dataset.vno;if(vArm!==id){vArm=id;clearTimeout(vT);vT=setTimeout(function(){vArm=null;renderVal()},4000);renderVal();return}vArm=null;vAct(id,false)}});
   setInterval(function(){if(!document.hidden&&connected())vLoad()},30000);
   $('rmodes').addEventListener('click',function(e){var b=e.target.closest('button[data-m]');if(!b)return;rmode=b.dataset.m;Array.prototype.forEach.call($('rmodes').children,function(x){x.classList.toggle('on',x===b)})});
