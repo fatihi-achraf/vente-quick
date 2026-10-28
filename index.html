@@ -215,11 +215,17 @@ function render(){
   $('saleCard').hidden=!(hasName&&on&&kind==='sale');$('regCard').hidden=!(hasName&&on&&kind==='reg');$('valCard').hidden=!(hasName&&on&&kind==='val');$('cliCard').hidden=!(hasName&&on&&kind==='cli');renderVal();renderCli();
   if(fillProd()&&!$('price').value)onProd();refresh();renderHist();
 }
+function orderCode(id){return String(id||'').slice(-6).toUpperCase()}
+function copyCode(code){
+  function ok(){pop('Code '+code+' copié : envoie-le au machiniste')}
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code).then(ok,function(){pop('Code : '+code)});return}}catch(e){}
+  try{var t=document.createElement('textarea');t.value=code;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();ok()}catch(e){pop('Code : '+code)}
+}
 function renderHist(){
   var items=data.q.map(function(s){return {s:s,p:1}}).concat(data.done.slice().reverse().map(function(s){return {s:s,p:0}}));
   $('hist').innerHTML=items.slice(0,15).map(function(x){var s=x.s;
     if(s.kind==='reg')return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>Règlement · '+esc(s.mode)+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>';
-    return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>'+esc(s.product)+' · '+String(s.qty).replace('.',',')+' · '+(s.unpaid?'à encaisser':esc(s.mode))+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>'}).join('');
+    return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>'+esc(s.product)+' · '+String(s.qty).replace('.',',')+' · '+(s.unpaid?'à encaisser':esc(s.mode))+'</small><small>Code étiquette : <b style="letter-spacing:.1em">'+orderCode(s.id)+'</b> <button type="button" class="link" data-cp="'+orderCode(s.id)+'" style="padding:2px 6px">Copier</button></small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>'}).join('');
 }
 function reset(){['qty','price','tot','note'].forEach(function(i){$(i).value=''});$('cli').value='';fillProd();$('useAdv').checked=false;rec=[];setMode('');err('');onProd()}
 function setMode(m){mode=m;Array.prototype.forEach.call($('modes').children,function(b){b.classList.toggle('on',b.dataset.m===m)})}
@@ -450,6 +456,7 @@ function init(){
   $('kind').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('kind2').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('kind3').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
+  $('hist').addEventListener('click',function(e){var b=e.target.closest('[data-cp]');if(b)copyCode(b.dataset.cp)});
   $('kind4').addEventListener('click',function(e){var b=e.target.closest('button[data-k]');if(b)setKind(b.dataset.k)});
   $('cliQ').addEventListener('input',renderCli);
   $('cliModes').addEventListener('click',function(e){var b=e.target.closest('button[data-cm]');if(b){cliMode=b.dataset.cm;renderCli()}});
