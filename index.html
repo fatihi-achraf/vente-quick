@@ -48,6 +48,7 @@ input[type=text],input:not([type]),select{width:100%;min-height:50px;padding:10p
 .cl-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px}.cl-sum div{padding:10px 12px;border-radius:10px;background:var(--surface-2)}.cl-sum span{display:block;font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}.cl-sum b{font-size:1.15rem}.cl-sum .d b{color:var(--bad)}.cl-sum .a b{color:var(--ok)}
 .crow{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;min-height:54px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font-size:.98rem}.crow b.d{color:var(--bad)}.crow b.a{color:var(--ok)}.crow small{display:block;color:var(--ink-2)}
 .cl-big{display:flex;justify-content:space-between;align-items:baseline;padding:14px;border-radius:12px;font-weight:700}.cl-big.d{background:var(--bad-bg);color:var(--bad)}.cl-big.a{background:var(--ok-bg);color:var(--ok)}.cl-big.z{background:var(--surface-2);color:var(--ink-2)}.cl-big b{font-size:1.5rem}
+.codechip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 12px;margin-top:6px;border-radius:10px;border:1.5px dashed var(--line);background:var(--surface-2);color:var(--ink);font-family:ui-monospace,monospace;font-weight:700;font-size:1rem;letter-spacing:.14em}
 .pop{position:fixed;left:16px;right:16px;bottom:24px;max-width:520px;margin:auto;padding:14px 16px;border-radius:12px;background:var(--ok);color:#fff;font-weight:700;text-align:center;z-index:9}
 .pop.warn{background:var(--warn);color:#fff}
 </style>
@@ -140,8 +141,37 @@ function load(){try{var d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&ty
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
 var nf=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});
 function fmt(c){return nf.format(Math.abs(c)/100)}
-function parseMoney(s){s=String(s==null?'':s).replace(/[\s  ]/g,'').replace(',','.');if(s===''||s==='.'||!/^\d*\.?\d*$/.test(s))return null;var n=Number(s);return isFinite(n)?Math.round(n*100):null}
-function parseQty(s){s=String(s==null?'':s).replace(/[\s  ]/g,'').replace(',','.');if(s===''||s==='.'||!/^\d*\.?\d*$/.test(s))return null;var n=Math.round(Number(s)*1000)/1000;return isFinite(n)?n:null}
+function parseMoney1(s){s=String(s==null?'':s).replace(/[\s  ]/g,'').replace(',','.');if(s===''||s==='.'||!/^\d*\.?\d*$/.test(s))return null;var n=Number(s);return isFinite(n)?Math.round(n*100):null}
+function parseQty1(s){s=String(s==null?'':s).replace(/[\s  ]/g,'').replace(',','.');if(s===''||s==='.'||!/^\d*\.?\d*$/.test(s))return null;var n=Math.round(Number(s)*1000)/1000;return isFinite(n)?n:null}
+/* ---- calcul dans la case : 12+8,5+3 donne la somme ---- */
+function sumExpr(str,one){var parts=String(str==null?'':str).split('+'),tot=0,n=0,i,v;for(i=0;i<parts.length;i++){if(parts[i].replace(/[\s  ]/g,'')==='')continue;v=one(parts[i]);if(v===null)return null;tot+=v;n++}return n?tot:null}
+function parseMoney(str){var s=sumExpr(str,parseMoney1);return s===null?null:Math.round(s)}
+function parseQty(str){var s=sumExpr(str,parseQty1);return s===null?null:Math.round(s*1000)/1000}
+function calcInit(list){
+  var ups=[];document.addEventListener('input',function(){ups.forEach(function(f){f()})});
+  var nf2=new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}),nq2=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:3});
+  list.forEach(function(it){
+    var inp=document.getElementById(it.id);if(!inp||inp.dataset.calc)return;inp.dataset.calc='1';
+    var w=document.createElement('span');w.style.cssText='position:relative;display:block';
+    inp.parentNode.insertBefore(w,inp);w.appendChild(inp);inp.style.paddingLeft='54px';
+    var b=document.createElement('button');b.type='button';b.textContent='+';b.setAttribute('aria-label','Ajouter une autre valeur');
+    b.style.cssText='position:absolute;left:6px;top:50%;transform:translateY(-50%);width:42px;height:40px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface-2,var(--surface));color:var(--ink);font-size:1.5rem;font-weight:700;line-height:1;padding:0;cursor:pointer;z-index:2';
+    w.appendChild(b);
+    var h=document.createElement('small');h.className='hint';h.hidden=true;h.style.cssText='font-weight:600;color:var(--ink)';
+    var host=w.parentNode;if(host&&host.classList&&host.classList.contains('money')){host.parentNode.insertBefore(h,host.nextSibling)}else{w.parentNode.insertBefore(h,w.nextSibling)}
+    function upd(){
+      var v=inp.value;if(v.indexOf('+')<0){h.hidden=true;return}
+      var s=it.kind==='qty'?parseQty(v):parseMoney(v);
+      if(s===null){h.hidden=true;return}
+      h.textContent='= '+(it.kind==='qty'?nq2.format(s)+(it.unit&&it.unit()?' '+it.unit():''):nf2.format(s/100)+' DH');h.hidden=false;
+    }
+    inp.addEventListener('input',upd);
+    b.addEventListener('mousedown',function(e){e.preventDefault()});
+    b.addEventListener('click',function(){var v=inp.value;if(v.trim()!==''&&!/\+\s*$/.test(v)&&sumExpr(v,it.kind==='qty'?parseQty1:parseMoney1)!==null){inp.value=v.replace(/\s+$/,'')+'+';inp.dispatchEvent(new Event('input',{bubbles:true}))}inp.focus()});
+    inp.addEventListener('change',upd);
+    ups.push(upd);
+  });
+}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function cleanName(s){return String(s==null?'':s).replace(/\s+/g,' ').trim().slice(0,60)}
 function nameKey(s){return cleanName(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim()}
@@ -225,7 +255,7 @@ function renderHist(){
   var items=data.q.map(function(s){return {s:s,p:1}}).concat(data.done.slice().reverse().map(function(s){return {s:s,p:0}}));
   $('hist').innerHTML=items.slice(0,15).map(function(x){var s=x.s;
     if(s.kind==='reg')return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>Règlement · '+esc(s.mode)+'</small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>';
-    return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>'+esc(s.product)+' · '+String(s.qty).replace('.',',')+' · '+(s.unpaid?'à encaisser':esc(s.mode))+'</small><small>Code étiquette : <b style="letter-spacing:.1em">'+orderCode(s.id)+'</b> <button type="button" class="link" data-cp="'+orderCode(s.id)+'" style="padding:2px 6px">Copier</button></small></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>'}).join('');
+    return '<div class="it"><div><b>'+esc(s.clientName)+'</b><small>'+esc(s.product)+' · '+String(s.qty).replace('.',',')+' · '+(s.unpaid?'à encaisser':esc(s.mode))+'</small><button type="button" class="codechip" data-cp="'+orderCode(s.id)+'" aria-label="Copier le code '+orderCode(s.id)+'">'+orderCode(s.id)+' <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg></button></div><div style="text-align:right"><b class="mono">'+fmt(s.total)+'</b>'+(x.p?'<span class="pend"><br>en attente</span>':'')+'</div></div>'}).join('');
 }
 function reset(){['qty','price','tot','note'].forEach(function(i){$(i).value=''});$('cli').value='';fillProd();$('useAdv').checked=false;rec=[];setMode('');err('');onProd()}
 function setMode(m){mode=m;Array.prototype.forEach.call($('modes').children,function(b){b.classList.toggle('on',b.dataset.m===m)})}
@@ -291,12 +321,12 @@ function renderVal(){
   if(kind!=='val')return;
   $('valList').innerHTML=l.length?l.map(function(o){var t=o.s?new Date(o.s):null,isR=o.t==='reglement';
     return '<div class="it" style="flex-direction:column"><div style="display:flex;justify-content:space-between;gap:8px"><div><b>'+esc(o.n||o.l||(isR?'Règlement':'Vente'))+'</b><small>'+(isR?'Règlement':'Vente')+(o.p?' · '+esc(o.p):'')+' · '+esc(o.d)+(t?' '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0'):'')+(o.a?' · '+esc(o.a):'')+'</small></div><b class="mono">'+fmt(o.c)+' DH</b></div>'
-      +'<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="go" data-vok="'+esc(o.id)+'" style="min-height:44px;font-size:.95rem;flex:1">Valider ✓</button><button type="button" class="pchip" data-vno="'+esc(o.id)+'" style="min-height:44px;flex:1">'+(vArm===o.id?'Confirmer : non reçu ?':'Non reçu')+'</button></div></div>'}).join(''):'<p class="notice">Aucun virement en attente.</p>';
+      +'<div style="display:flex;gap:8px;margin-top:8px"><button type="button" class="go" data-vok="'+esc(o.id)+'" style="min-height:44px;font-size:.95rem;flex:1">Valider ✓</button><button type="button" class="pchip" data-vno="'+esc(o.id)+'" style="min-height:44px;flex:1">'+(vArm===o.id?'Confirmer : non reçu → crédit ?':'Non reçu')+'</button></div></div>'}).join(''):'<p class="notice">Aucun virement en attente.</p>';
 }
 function vLoad(){if(!connected())return;api('quickPend').then(function(r){data.pend=r.pending||[];renderVal()},function(){})}
 function vAct(id,ok){
   var er=$('valErr');er.hidden=true;
-  api('quickVal',{id:id,ok:ok,by:data.name}).then(function(r){data.pend=r.pending||[];renderVal();pop(ok?'Virement validé ✓':'Marqué non reçu : bon annulé')},function(e){er.textContent=e.code==='network'?'Pas de connexion. Réessaie.':(e.message||'Erreur');er.hidden=false});
+  api('quickVal',{id:id,ok:ok,by:data.name}).then(function(r){data.pend=r.pending||[];renderVal();pop(ok?'Virement validé ✓':'Non reçu : passé en crédit du client')},function(e){er.textContent=e.code==='network'?'Pas de connexion. Réessaie.':(e.message||'Erreur');er.hidden=false});
 }
 function rDue(){var n=cleanName($('rcli').value);if(!n)return 0;var f=clients().find(function(c){return nameKey(c[1])===nameKey(n)});return f?((data.view&&data.view.due&&data.view.due[f[0]])||0):0}
 function rRefresh(){
@@ -441,6 +471,7 @@ function connectWith(text,done){
   },function(e){data.conn=old;done(e.code==='auth'?'Ce code est refusé.':'Impossible de joindre le Google Sheet. Vérifie internet.')});
 }
 function init(){
+  calcInit([{id:'qty',kind:'qty'},{id:'tot',kind:'money'}]);
   load();
   $('nameOk').onclick=function(){var n=cleanName($('nameIn').value);if(n.length<2)return;data.name=n;save();render()};
   $('chg').onclick=function(){var n=prompt('Ton prénom',data.name);if(n==null)return;n=cleanName(n);if(n.length>=2){data.name=n;save();render()}};
