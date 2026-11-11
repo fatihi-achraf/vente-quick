@@ -1,5 +1,5 @@
 /* Carnet Vente: cache simple. En ligne on prend la dernière version, hors ligne on sert la copie gardée. */
-const CACHE='carnet-quick-v18';
+const CACHE='carnet-quick-v19';
 const ASSETS=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png','icon-maskable-512.png','apple-touch-icon.png'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
@@ -12,10 +12,10 @@ self.addEventListener('fetch',e=>{
   if(req.method!=='GET')return;
   const url=new URL(req.url);
   if(url.origin!==location.origin)return;
-  e.respondWith(
-    fetch(req).then(res=>{
-      if(res&&res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy))}
-      return res;
-    }).catch(()=>caches.match(req).then(r=>r||caches.match('index.html')))
-  );
+  /* rapide même avec un mauvais réseau : on sert la copie gardée tout de suite et on la met à jour en arrière-plan */
+  e.respondWith(caches.open(CACHE).then(c=>c.match(req,{ignoreSearch:true}).then(hit=>{
+    const net=fetch(req).then(res=>{if(res&&res.ok)c.put(req,res.clone());return res}).catch(()=>null);
+    if(hit){e.waitUntil(net);return hit}
+    return net.then(r=>r||c.match('index.html'));
+  })));
 });
